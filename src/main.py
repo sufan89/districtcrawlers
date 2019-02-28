@@ -28,10 +28,31 @@ def GetDistrictData():
     if bs is None:
         print('获取数据失败')
         return
+    fullDistrict = {}
     for i in bs.find_all('tr', 'provincetr'):
         '''循环获取省信息'''
         for j in i.find_all('td'):
-            print(j.getText(),j)
+            provinceName = j.getText()
+            elmenta = j.find('a')
+            if elmenta is not None:
+                hrefstr = elmenta.get('href')
+            fullDistrict[provinceName] = hrefstr
+    print(fullDistrict)
+
+
+def DowLoadData(dicProvinces):
+    '''下载数据'''
+    pass
+
+
+def CreateFile(fileName):
+    '''创建文件'''
+    pass
+
+
+def writeDataToFile(rowDt):
+    '''写入一行数据'''
+    pass
 
 
 if __name__ == "__main__":
