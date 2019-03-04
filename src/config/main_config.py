@@ -10,3 +10,7 @@ class config:
     saveFloder = '/home/sufan/Desktop/data/dicdata/'
     '''样式表'''
     classType = {0: 'provincetr', 1: 'citytr', 2: 'countytr', 3: 'towntr', 4: 'villagetr'}
+    '''日志文件'''
+    errorLogFile = '/home/sufan/Desktop/data/dicdata/log/'
+    '''重试次数'''
+    retryCount = 0

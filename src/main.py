@@ -6,21 +6,36 @@ from bs4 import BeautifulSoup
 import chardet
 import config
 import os
+import datetime
 
 
 def connToUrl(url):
     '''请求URL获取数据'''
-    user_agent = 'IP'
-    headers = {'User-agent': user_agent}
-    request = urllib.request.Request(url, headers=headers)
-    content = urllib.request.urlopen(request).read()
-    char = chardet.detect(content)['encoding']
-    if char == 'GB2312':
-        content = urllib.request.urlopen(request).read().decode('gbk').encode('utf-8')
-
-    #    content = urllib.request.urlopen(request).read().decode('ISO-8859-1').encode('utf-8')
-    bs = BeautifulSoup(content, 'html.parser')
-    return bs
+    try:
+        user_agent = 'IP'
+        headers = {'User-agent': user_agent}
+        request = urllib.request.Request(url, headers=headers)
+        content = urllib.request.urlopen(request).read()
+        char = chardet.detect(content)['encoding']
+        if char == 'GB2312':
+            content = urllib.request.urlopen(request).read().decode('gbk').encode('utf-8')
+        bs = BeautifulSoup(content, 'html.parser')
+        config.config.retryCount = 0
+        return bs
+    except (Exception) as error:
+        if error.code == 403:
+            return None
+        elif error.code == 404:
+            return None
+        elif config.config.retryCount <= 3:
+            '''重试'''
+            config.config.retryCount = config.config.retryCount + 1
+            return connToUrl(url)
+        else:
+            print(url)
+            print(error)
+            config.config.retryCount = 0
+            return None
 
 
 def GetDistrictData():
@@ -51,22 +66,42 @@ def DowLoadData(dicProvinces):
         if not CreateFile(filename):
             continue
         urlstr = config.config.targetUrl + dicProvinces[key]
-        fs = os.open(filename, os.O_WRONLY)
-        print('创建文件：%s.csv 成功' % key)
+        fs = open(filename, mode='w', buffering=-1, encoding='gbk', newline='\n')
+        print(datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S'), '创建文件：%s.csv 成功' % key)
         GetUrlData(urlstr, 1, fs, [dicProvinces[key].split('.')[0], key])
+        fs.close()
+        print(datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S'), '%s:下载成功' % key)
 
 
 def GetUrlData(url, classtype, filestream, rowdata):
     '''循环请求网页，并将数据存入到文件'''
     bs = connToUrl(url)
     if bs is None:
-        print('请求地址失败:', url)
+        errorStr = '请求地址：' + url + '\n' + ','.join(rowdata)
+        writeErrorData(errorStr)
+        return False
     if classtype == 4:
         '''村级，写数据到文件'''
+        for i in bs.find_all('tr', config.config.classType[classtype]):
+            rowDt = rowdata.copy()
+            for j in i.find_all('td'):
+                rowDt.append(j.getText())
+            writeDataToFile(filestream, rowDt)
+            filestream.flush()
+        return True
     else:
         '''乡镇以上级，继续请求'''
-        print(rowdata)
-        GetUrlData(url, classtype + 1, filestream, rowdata)
+        for i in bs.find_all('tr', config.config.classType[classtype]):
+            element = i.find('a')
+            hrefStr = ''
+            newRow = rowdata.copy()
+            if element is not None:
+                hrefStr = element.get('href')
+            strUrl = GetUrl(classtype, url, hrefStr)
+            for j in i.find_all('td'):
+                newRow.append(j.getText())
+            if GetUrlData(strUrl, classtype + 1, filestream, newRow.copy()) == False:
+                writeDataToFile(filestream, newRow.copy())
 
 
 def CreateFile(fileName):
@@ -81,10 +116,39 @@ def CreateFile(fileName):
         return False
 
 
-def writeDataToFile(filestream,rowDt):
+def GetUrl(classtype, url, hrefStr):
+    '''获取请求URL'''
+    if classtype == 0:
+        return config.config.targetUrl
+    elif classtype == 1:
+        return config.config.targetUrl + hrefStr
+    elif classtype == 2:
+        return url[:-9] + hrefStr
+    elif classtype == 3:
+        return url[:-11] + hrefStr
+
+
+def writeDataToFile(filestream, rowDt):
     '''写入一行数据'''
-    pass
+    if filestream is None:
+        print("无法获取文件")
+        return
+    else:
+        filestream.write(','.join(rowDt) + '\n')
+
+
+def writeErrorData(errorLog):
+    '''写错误日志'''
+    fs = open(config.config.errorLogFile, mode='w', buffering=-1, encoding='gbk')
+    if fs is None:
+        print('无法打开错误日志')
+    fs.write(errorLog + '\n')
+    fs.flush()
+    fs.close()
 
 
 if __name__ == "__main__":
+    nowDate = datetime.datetime.today()
+    config.config.errorLogFile = config.config.errorLogFile + nowDate.strftime('%Y%m%d') + '.txt'
+    CreateFile(config.config.errorLogFile)
     GetDistrictData()
