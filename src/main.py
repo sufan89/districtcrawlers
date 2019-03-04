@@ -148,7 +148,9 @@ def writeErrorData(errorLog):
 
 
 if __name__ == "__main__":
+    # 初始化日志文件
     nowDate = datetime.datetime.today()
     config.config.errorLogFile = config.config.errorLogFile + nowDate.strftime('%Y%m%d') + '.txt'
     CreateFile(config.config.errorLogFile)
+    # 开始下载国家行政区数据
     GetDistrictData()
