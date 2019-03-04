@@ -81,7 +81,7 @@ def CreateFile(fileName):
         return False
 
 
-def writeDataToFile(rowDt):
+def writeDataToFile(filestream,rowDt):
     '''写入一行数据'''
     pass
 
