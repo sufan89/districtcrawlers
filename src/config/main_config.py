@@ -14,3 +14,7 @@ class config:
     errorLogFile = '/home/sufan/Desktop/data/dicdata/log/'
     '''重试次数'''
     retryCount = 0
+    '''已下载的数据记录'''
+    doneDataFile = '/home/sufan/Desktop/data/dicdata/log/done.txt'
+    '''已下载的省份s'''
+    doneData = []

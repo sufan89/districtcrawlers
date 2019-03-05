@@ -62,6 +62,8 @@ def DowLoadData(dicProvinces):
         print('没有要下载的数据')
     for key in dicProvinces.keys():
         '''创建文件'''
+        if key in config.config.doneData:
+            continue
         filename = config.config.saveFloder + key + '.csv'
         if not CreateFile(filename):
             continue
@@ -71,6 +73,8 @@ def DowLoadData(dicProvinces):
         GetUrlData(urlstr, 1, fs, [dicProvinces[key].split('.')[0], key])
         fs.close()
         print(datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S'), '%s:下载成功' % key)
+        config.config.doneData.append(key)
+        writeDoneData()
 
 
 def GetUrlData(url, classtype, filestream, rowdata):
@@ -147,10 +151,30 @@ def writeErrorData(errorLog):
     fs.close()
 
 
+def readDoneData():
+    '''读取已下载的数据'''
+    if os.path.exists(config.config.doneDataFile):
+        fs = open(config.config.doneDataFile, mode='r', buffering=-1, encoding='utf-8', newline='\n')
+        shen = fs.readline().rstrip()
+        while shen != '':
+            config.config.doneData.append(shen)
+            shen = fs.readline().rstrip()
+
+
+def writeDoneData():
+    if os.path.exists(config.config.doneDataFile):
+        fs = open(config.config.doneDataFile, mode='w', buffering=-1, encoding='utf-8')
+        fs.write('\n'.join(config.config.doneData))
+        fs.flush()
+        fs.close()
+
+
 if __name__ == "__main__":
     # 初始化日志文件
     nowDate = datetime.datetime.today()
     config.config.errorLogFile = config.config.errorLogFile + nowDate.strftime('%Y%m%d') + '.txt'
     CreateFile(config.config.errorLogFile)
+    #读取已下载数据列表
+    readDoneData()
     # 开始下载国家行政区数据
     GetDistrictData()
