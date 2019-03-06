@@ -23,6 +23,14 @@ def connToUrl(url):
         config.config.retryCount = 0
         return bs
     except (Exception) as error:
+        if hasattr(error, 'code') == False:
+            if config.config.retryCount <= 3:
+                '''重试'''
+                config.config.retryCount = config.config.retryCount + 1
+                return connToUrl(url)
+            else:
+                config.config.retryCount = 0
+                return None
         if error.code == 403:
             return None
         elif error.code == 404:
@@ -106,6 +114,7 @@ def GetUrlData(url, classtype, filestream, rowdata):
                 newRow.append(j.getText())
             if GetUrlData(strUrl, classtype + 1, filestream, newRow.copy()) == False:
                 writeDataToFile(filestream, newRow.copy())
+            print(strUrl)
 
 
 def CreateFile(fileName):
@@ -143,7 +152,7 @@ def writeDataToFile(filestream, rowDt):
 
 def writeErrorData(errorLog):
     '''写错误日志'''
-    fs = open(config.config.errorLogFile, mode='w', buffering=-1, encoding='gbk')
+    fs = open(config.config.errorLogFile, mode='a', buffering=-1, encoding='gbk')
     if fs is None:
         print('无法打开错误日志')
     fs.write(errorLog + '\n')
@@ -174,7 +183,7 @@ if __name__ == "__main__":
     nowDate = datetime.datetime.today()
     config.config.errorLogFile = config.config.errorLogFile + nowDate.strftime('%Y%m%d') + '.txt'
     CreateFile(config.config.errorLogFile)
-    #读取已下载数据列表
+    # 读取已下载数据列表
     readDoneData()
     # 开始下载国家行政区数据
     GetDistrictData()
