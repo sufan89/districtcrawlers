@@ -92,6 +92,7 @@ def GetUrlData(url, classtype, filestream, rowdata):
         errorStr = '请求地址：' + url + '\n' + ','.join(rowdata)
         writeErrorData(errorStr)
         return False
+
     if classtype == 4:
         '''村级，写数据到文件'''
         for i in bs.find_all('tr', config.config.classType[classtype]):
@@ -101,17 +102,39 @@ def GetUrlData(url, classtype, filestream, rowdata):
             writeDataToFile(filestream, rowDt)
             filestream.flush()
         return True
+    elif classtype == 2 and rowdata[len(rowdata) - 1] in config.config.noquxian:
+        '''没有区县情况处理'''
+        for i in bs.find_all('tr', config.config.classType[classtype + 1]):
+            element = i.find('a')
+            # hrefStr = ''
+            newRow = rowdata.copy()
+            newRow.append(rowdata[len(rowdata) - 2])
+            newRow.append(rowdata[len(rowdata) - 1])
+            for j in i.find_all('td'):
+                newRow.append(j.getText())
+            if element is not None:
+                hrefStr = element.get('href')
+            else:
+                writeDataToFile(filestream, newRow.copy())
+                continue
+            strUrl = GetUrl(classtype, url, hrefStr)
+            if GetUrlData(strUrl, classtype + 2, filestream, newRow.copy()) == False:
+                writeDataToFile(filestream, newRow.copy())
+            print(strUrl)
     else:
         '''乡镇以上级，继续请求'''
         for i in bs.find_all('tr', config.config.classType[classtype]):
             element = i.find('a')
-            hrefStr = ''
+            # hrefStr = ''
             newRow = rowdata.copy()
-            if element is not None:
-                hrefStr = element.get('href')
-            strUrl = GetUrl(classtype, url, hrefStr)
             for j in i.find_all('td'):
                 newRow.append(j.getText())
+            if element is not None:
+                hrefStr = element.get('href')
+            else:
+                writeDataToFile(filestream, newRow.copy())
+                continue
+            strUrl = GetUrl(classtype, url, hrefStr)
             if GetUrlData(strUrl, classtype + 1, filestream, newRow.copy()) == False:
                 writeDataToFile(filestream, newRow.copy())
             print(strUrl)
@@ -122,7 +145,10 @@ def CreateFile(fileName):
     if os.path.exists(fileName):
         os.remove(fileName)
     try:
-        os.mknod(fileName)
+        if hasattr(os, 'mknod'):
+            os.mknod(fileName)
+        else:
+            open(fileName, mode='a+')
         return True
     except:
         print('创建文件：%s 失败！' % fileName)
@@ -168,6 +194,8 @@ def readDoneData():
         while shen != '':
             config.config.doneData.append(shen)
             shen = fs.readline().rstrip()
+    else:
+        CreateFile(config.config.doneDataFile)
 
 
 def writeDoneData():
